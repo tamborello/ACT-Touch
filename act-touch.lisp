@@ -2,7 +2,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 
 ;;; Author      : Frank Tamborello
-;;; Copyright   : (c) 2012-4 Cogscent, LLC
+;;; Copyright   : (c) 2012-6 Cogscent, LLC
 ;;; Availability: GNU LGPL, see LGPL.txt
 ;;; Address     : Cogscent, LLC
 ;;; 		: PMB 7431
@@ -32,19 +32,19 @@
 ;;; 
 ;;; Acknowledgements
 ;;;		: This research is sponsored by Measurement Science and 
-;;;		Engineering grant 60NANB12D134 from the 
+;;;		Engineering grants 60NANB12D134 and 70NANB15H252 from the 
 ;;;		National Institute of Standards and Technology (NIST).
-;;;		Special acknowledgements are due to Dr. Ross Micheals and 
-;;;		Dr. Kristen K. Greene of NIST's Information Technology 
-;;;		Laboratory.
+;;;		Special acknowledgements are due to Drs. Ross Micheals, Mary
+;;;		Theofanos, and Kristen K. Greene of NIST's Information  
+;;;		Technology Laboratory.
 ;;;		Thanks also to Dr. Michael D. Byrne, upon whose experiment 
 ;;;		library code I based the device code.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 
 ;;; Filename    : act-touch.lisp
-;;; Revision    : 13
+;;; Revision    : 14
 ;;; 
-;;; Description : This code extends the ACT-R 6.1 motor module to implement
+;;; Description : This code extends the ACT-R 7 motor module to implement
 ;;;		several movement styles commonly used with multi-touch handheld 
 ;;;		computers as well as defines a device with which to perform those 
 ;;;		movement styles.
@@ -149,8 +149,17 @@
 ;;; to schedule the event for a defined movement style. Now all ACT-Touch's
 ;;; defined movement styles, such as tap, use that instead of their own
 ;;; request methods.
+;;;
+;;; 2016.06.02 fpt 14
+;;; 1. Revised move-hand-touch to comply with xy-loc's new declamation (r1802) 
+;;; and apparently an undocumented change in approach-width that now requires
+;;; the vision module to be passed as a third argument.
+;;;
+;;; 2. Replaced call to rand-time with randomize-time because r1878.
+;;;
+;;; NB: This version complies with ACT-R 7 (r2018), at least for move-hand-touch
+;;; and tap.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 
 (unless
@@ -186,7 +195,7 @@
 (defmethod compute-exec-time ((mtr-mod motor-module) (self tap))
   (+ (init-time mtr-mod)  
      (max (burst-time mtr-mod)
-          (rand-time (fitts mtr-mod 
+          (randomize-time (fitts mtr-mod 
 ;; borrow peck's "b" coefficient, although really should just be 0
                             (peck-fitts-coeff mtr-mod) 
 ;; get the current device's index-z
@@ -294,39 +303,39 @@
   (unless (or 
            (check-jam mtr-mod) 
            (check-specs (or loc object)))
-    (let ((r-theta nil)
-          (feat nil) 
-          (w nil)
-          (vision (get-module :vision)))
+    (let (r-theta feat w vision)
       
-(setf feat  ;; always refer back to the visicon chunks if possible
-        (cond ((and object (chunk-visicon-entry object) (chunk-p-fct (gethash (chunk-visicon-entry object) (visicon vision))))
-               (gethash (chunk-visicon-entry object) (visicon vision)))
-              ((and object (chunk-slot-value-fct object 'screen-pos)
-                    (chunk-p-fct (chunk-slot-value-fct object 'screen-pos))
-                    (numberp (chunk-slot-value-fct (chunk-slot-value-fct object 'screen-pos) 'screen-x)) 
-                    (numberp (chunk-slot-value-fct (chunk-slot-value-fct object 'screen-pos) 'screen-y)))
-               (if (chunk-p-fct (gethash (chunk-visicon-entry (chunk-slot-value-fct object 'screen-pos)) (visicon vision)))
-                    (gethash (chunk-visicon-entry (chunk-slot-value-fct object 'screen-pos)) (visicon vision))
-                 (chunk-slot-value-fct object 'screen-pos)))
-              ((and loc (chunk-visicon-entry loc) (chunk-p-fct (gethash (chunk-visicon-entry loc) (visicon vision))))
-               (gethash (chunk-visicon-entry loc) (visicon vision)))
-              ((and loc (chunk-p-fct loc) (numberp (chunk-slot-value-fct loc 'screen-x)) (numberp (chunk-slot-value-fct loc 'screen-y)))
-               loc)
-              (t 
-               (print-warning "No valid location could be generated from ~s or ~s when trying to move the mouse." object loc)
-               (return-from move-hand-touch nil))))
+      (setf 
+       vision
+       (get-module :vision)
+       feat  ;; always refer back to the visicon chunks if possible
+       (cond ((and object (chunk-visicon-entry object) (chunk-p-fct (gethash (chunk-visicon-entry object) (visicon vision))))
+              (gethash (chunk-visicon-entry object) (visicon vision)))
+             ((and object (chunk-slot-value-fct object 'screen-pos)
+                   (chunk-p-fct (chunk-slot-value-fct object 'screen-pos))
+                   (numberp (chunk-slot-value-fct (chunk-slot-value-fct object 'screen-pos) 'screen-x)) 
+                   (numberp (chunk-slot-value-fct (chunk-slot-value-fct object 'screen-pos) 'screen-y)))
+              (if (chunk-p-fct (gethash (chunk-visicon-entry (chunk-slot-value-fct object 'screen-pos)) (visicon vision)))
+                  (gethash (chunk-visicon-entry (chunk-slot-value-fct object 'screen-pos)) (visicon vision))
+                  (chunk-slot-value-fct object 'screen-pos)))
+             ((and loc (chunk-visicon-entry loc) (chunk-p-fct (gethash (chunk-visicon-entry loc) (visicon vision))))
+              (gethash (chunk-visicon-entry loc) (visicon vision)))
+             ((and loc (chunk-p-fct loc) (numberp (chunk-slot-value-fct loc 'screen-x)) (numberp (chunk-slot-value-fct loc 'screen-y)))
+              loc)
+             (t 
+              (print-warning "No valid location could be generated from ~s or ~s when trying to move the mouse." object loc)
+              (return-from move-hand-touch nil))))
 
                  
-      (setf r-theta (xy-to-polar (loc (right-hand mtr-mod)) (xy-loc feat)))
+      (setf r-theta (xy-to-polar (loc (right-hand mtr-mod)) (xy-loc feat vision)))
       (if (= 0 (vr r-theta))        ; r=0 is a no-op 
           (model-warning "Move-hand-touch action aborted because hand is at
                      requested target ~S" (if object object loc))
         (progn
-          (setf w (pm-angle-to-pixels (approach-width feat (vtheta r-theta))))
+          (setf w (pm-angle-to-pixels (approach-width feat (vtheta r-theta) vision)))
           (let ((r-theta-new (xy-to-polar 
                               (loc (right-hand mtr-mod)) 
-                              (noisy-loc-em? mtr-mod (xy-loc feat) w (vtheta r-theta)))))
+                              (noisy-loc-em? mtr-mod (xy-loc feat vision) w (vtheta r-theta)))))
 
               (prepare-movement 
                mtr-mod
@@ -386,13 +395,13 @@
                                (finger-loc-m mtr-mod 'right 'index)))))))
   (+ (init-time mtr-mod)
      (max (burst-time mtr-mod) 
-          (rand-time (move-time self)))))
+          (randomize-time (move-time self)))))
 
 (defmethod compute-finish-time ((mtr-mod motor-module) (self index-thumb))
   (+ (exec-time self) 
      (burst-time mtr-mod)
      (max (burst-time mtr-mod)
-          (rand-time (move-time self)))))
+          (randomize-time (move-time self)))))
 
 (defmethod index-thumb ((mtr-mod motor-module) &key hand finger r theta)
   (unless (or (check-jam mtr-mod) (check-specs 'index-thumb hand finger r theta))
