@@ -1,4 +1,3 @@
-;;;  -*- mode: LISP; Syntax: COMMON-LISP;  Base: 10 -*-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 
 ;;; Author      : Frank Tamborello
@@ -123,7 +122,7 @@
 	preparation free
 ==>
    =goal>
-   	op tap-releasing
+   	op swipe
    +manual>
 	cmd tap-release
         hand right
@@ -185,7 +184,7 @@
 	preparation free
 ==>
    =goal>
-	op swiped
+	op swiping
    +manual>
 	cmd swipe
         hand right
