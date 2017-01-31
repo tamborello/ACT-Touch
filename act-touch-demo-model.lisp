@@ -122,7 +122,7 @@
 	preparation free
 ==>
    =goal>
-   	op swipe
+   	op tap-drag-release
    +manual>
 	cmd tap-release
         hand right
@@ -171,7 +171,7 @@
 	preparation free
 ==>
    =goal>
-	op tapped-dragged-releasing
+	op swipe
    +manual>
 	cmd tap-release
         hand right
@@ -184,7 +184,7 @@
 	preparation free
 ==>
    =goal>
-	op swiping
+	op pinch
    +manual>
 	cmd swipe
         hand right
@@ -200,7 +200,7 @@
 	preparation free
 ==>
    =goal>
-	op pinched
+	op rotate
    +manual>
 	cmd pinch
         hand right
