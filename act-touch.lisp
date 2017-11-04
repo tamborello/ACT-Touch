@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 
 ;;; Author      : Frank Tamborello
-;;; Copyright   : (c) 2012-6 Cogscent, LLC
+;;; Copyright   : (c) 2012-7 Cogscent, LLC
 ;;; Availability: GNU LGPL, see LGPL.txt
 ;;; Address     : Cogscent, LLC
 ;;; 		: PMB 7431
@@ -41,7 +41,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 
 ;;; Filename    : act-touch.lisp
-;;; Revision    : 14
+;;; Revision    : 15
 ;;; 
 ;;; Description : This code extends the ACT-R 7 motor module to implement
 ;;;		several movement styles commonly used with multi-touch handheld 
@@ -53,7 +53,7 @@
 ;;; 
 ;;; Bugs        : None known
 ;;;
-;;; To do       : 
+;;; To do       : 1. Index-z should be a property of the hand or finger (probably both), not of the device! XY coordinate units should all be pixels, not keyboard keys. 
 ;;; 
 ;;;
 ;;; Issues	:
@@ -158,6 +158,10 @@
 ;;;
 ;;; NB: This version complies with ACT-R 7 (r2018), at least for move-hand-touch
 ;;; and tap.
+;;;
+;;; 2017.11.04 fpt 15
+;;; I deleted index-z so that act-touch now works with devices other than objects
+;;; with an index-z slot, such as ACT-Droid.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -172,6 +176,8 @@
 (defmacro aif (test-form then-form &optional else-form)
   `(let ((it ,test-form))
      (if it ,then-form ,else-form)))
+
+
 
 
 
@@ -197,8 +203,10 @@
           (randomize-time (fitts mtr-mod 
 ;; borrow peck's "b" coefficient, although really should just be 0
                             (peck-fitts-coeff mtr-mod) 
-;; get the current device's index-z
-                            (index-z (current-device)))))))
+			    ;; get the current device's index-z
+			    ;; no, don't use that kludge anymore
+                            ;; (index-z (current-device))
+			    72)))))
 
 (defmethod feat-differences ((t1 tap) (t2 tap))
   (cond ((not (eq (hand t1) (hand t2))) 2)
