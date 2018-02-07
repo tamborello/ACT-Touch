@@ -165,13 +165,16 @@
 ;;;
 ;;; 2018.02.06 fpt 16
 ;;; Implement a new feature to allow the model to "consciously" control swiping
-;;; speed: an integer from the set [1,5], where 1 is slowest and 5 is fastest,
-;;; and 3 is default.
+;;; speed: an integer from the set [1,5], where 1 is slowest and 5 is fastest.
+;;; Note that this update breaks old code calling the swipe movement command
+;;; without specifying a speed feature: ACT-R simply won't execute the swipe
+;;; command, instead proceeding otherwise.
+;;; 
 ;;; I lack a principled way to map user intention of swiping speed to
 ;;; computing its execution time, so I'll just do what's expedient and otherwise
 ;;; seems at least not stupidly unreasonable: multiply fitts' r parameter in
 ;;; compute-exec-time by the product of 1/speed and (1+ (act-r-noise .2)).
-
+;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -407,7 +410,7 @@
                       (:index-thumb (r self))
                       (:swipe (* (r self)
 				 (*
-				  (/ 1 (aif (speed self) it 3))
+				  (/ 1 speed)
 				  (1+ (act-r-noise .2)))))
                       (:pinch (abs (- (start-width self) (end-width self))))
                       (:rotate (dist 
