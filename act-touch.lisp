@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 
 ;;; Author      : Frank Tamborello
-;;; Copyright   : (c) 2012-7 Cogscent, LLC
+;;; Copyright   : (c) 2012-8 Cogscent, LLC
 ;;; Availability: GNU LGPL, see LGPL.txt
 ;;; Address     : Cogscent, LLC
 ;;; 		: PMB 7431
@@ -41,7 +41,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 
 ;;; Filename    : act-touch.lisp
-;;; Revision    : 15
+;;; Revision    : 16
 ;;; 
 ;;; Description : This code extends the ACT-R 7 motor module to implement
 ;;;		several movement styles commonly used with multi-touch handheld 
@@ -162,6 +162,16 @@
 ;;; 2017.11.04 fpt 15
 ;;; I deleted index-z so that act-touch now works with devices other than objects
 ;;; with an index-z slot, such as ACT-Droid.
+;;;
+;;; 2018.02.06 fpt 16
+;;; Implement a new feature to allow the model to "consciously" control swiping
+;;; speed: an integer from the set [1,5], where 1 is slowest and 5 is fastest,
+;;; and 3 is default.
+;;; I lack a principled way to map user intention of swiping speed to
+;;; computing its execution time, so I'll just do what's expedient and otherwise
+;;; seems at least not stupidly unreasonable: multiply fitts' r parameter in
+;;; compute-exec-time by the product of 1/speed and (1+ (act-r-noise .2)).
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -395,7 +405,10 @@
              (fitts mtr-mod (peck-fitts-coeff mtr-mod) 
                     (ecase (style-name self)
                       (:index-thumb (r self))
-                      (:swipe (r self))
+                      (:swipe (* (r self)
+				 (*
+				  (/ 1 (aif (speed self) it 3))
+				  (1+ (act-r-noise .2)))))
                       (:pinch (abs (- (start-width self) (end-width self))))
                       (:rotate (dist 
                                (finger-loc-m mtr-mod 'right 'thumb)
@@ -430,7 +443,7 @@
                                     (device (current-device-interface))
                                     (rotation self))))
 
-(defStyle swipe index-thumb hand finger r theta num-fngrs)
+(defStyle swipe index-thumb hand finger r theta num-fngrs speed)
 
 (defmethod queue-output-events ((mtr-mod motor-module) (self swipe))
   (schedule-event-relative (exec-time self) 'device-handle-swipe :module :motor :output 'medium
