@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 
 ;;; Author      : Frank Tamborello
-;;; Copyright   : (c) 2012-8 Cogscent, LLC
+;;; Copyright   : (c) 2012 Cogscent, LLC
 ;;; Availability: GNU LGPL, see LGPL.txt
 ;;; Address     : Cogscent, LLC
 ;;; 		: PMB 7431
@@ -30,7 +30,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 
 ;;; Acknowledgements
-;;;		: This research was sponsored in part by Measurement Science and 
+;;;		: This research is sponsored by Measurement Science and 
 ;;;		Engineering grant 60NANB12D134 from the 
 ;;;		National Institute of Standards and Technology (NIST).
 ;;;		Special acknowledgements are due to Dr. Ross Micheals and 
@@ -40,11 +40,10 @@
 ;;;		library code I based the device code.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 
-;;; Filename    : swipe-test.lisp
-;;; Revision    : 2
+;;; Filename    : act-touch-demo-model.lisp
+;;; Revision    : 1
 ;;; 
-;;; Description : A quickie demonstration of ACT-Touch's new model-controllable,
-;;; variable-speed swipe gesture.
+;;; Description : A quickie demonstration of ACT-Touch
 ;;;
 ;;; Usage	: Place in ACT-R folder "User Loads." This file will load
 ;;;		automatically after ACT-R loads.
@@ -54,11 +53,8 @@
 ;;; To do       : Nothing
 ;;;
 ;;; ----- History -----
-;;; 2018.02.20 fpt 2
-;;; Example productions, fast and slow, short and long.
-;;;
-;;; 2018.02.01 fpt 1
-;;; Inception
+;;; 2012.09.29 fpt 1
+;;;		: Inception: Forked from act-touch.lisp
 ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -71,9 +67,6 @@
 
 (defmethod device-handle-swipe (device (loc vector) &rest params)
   (model-output "Model swiped device ~A at ~A with ~A ." device loc params))
-
-(defmethod device-handle-tap (device (loc vector) &rest params)
-  (model-output "Model tapped device ~A at ~A with ~a." device loc params))
 
 
 (clear-all)
@@ -88,26 +81,12 @@
   (goal-focus goal)
 
 
-  (p do-tap-init
+  (p do-swipe-init
      =goal>
         op start
      ?manual>
         state free
      ==>
-     =goal>
-     op start-swipes
-     +manual>
-     cmd tap
-     hand right
-     finger index
-     )
-
-  (p do-init-swipe
-     =goal>
-     op start-swipes
-     ?manual>
-     state free
-	==>
      =goal>
         op swipe1
      +manual>
@@ -116,11 +95,10 @@
      finger index
      r 50
      theta 0
-     num-fngrs 2
-     speed 3)
+     num-fngrs 2)
 
-  ;; Short and slow, upward, as though scrolling a page to look at the next few items
-  (p do-swipe-slowly-and-shortly
+  ;; 0.999 s between this swipe and init swipe
+  (p do-swipe1
      =goal>
      op swipe1
      ?manual>
@@ -132,62 +110,45 @@
         cmd swipe
 	hand right
 	finger index
-	r 50
-	theta 57
+	r 500
+	theta 0
 	num-fngrs 2
-	speed 1)
+	swipe-speed 1)
 
-  (p do-swipe-slowly-and-longly
+  ;; 1.298 s between this swipe and swipe1
+  (p do-swipe2
      =goal>
-     op swipe2
+        op swipe2
      ?manual>
-     state free
+        state free
      ==>
      =goal>
-     op swipe3
+        op swipe3
      +manual>
-     cmd swipe
-     hand right
-     finger index
-     r 500
-     theta 57
-     num-fngrs 2
-     speed 1)
-  
-  ;; Long and fast, upward, as though quickly flicking through a long page to get right to the bottom
-  (p do-swipe-quickly-and-longly
+        cmd swipe
+        hand right
+	finger index
+	r 500
+	theta 0
+	num-fngrs 2
+	swipe-speed 5)
+
+  ;; 1.794 s between this swipe and swipe2
+  (p do-swipe3
      =goal>
         op swipe3
      ?manual>
         state free
      ==>
      =goal>
-        op swipe4
+        op stop
      +manual>
         cmd swipe
         hand right
 	finger index
-	r 500
-	theta 57
-	num-fngrs 2
-	speed 5)
-
-  (p do-swipe-quickly-and-shortly
-     =goal>
-     op swipe4
-     ?manual>
-     state free
-     ==>
-     =goal>
-     op swipe5
-     +manual>
-     cmd swipe
-     hand right
-     finger index
-     r 50
-     theta 57
-     num-fngrs 2
-     speed 5)
+	r 5000
+	theta 0
+	num-fngrs 2)
 
   )
 
@@ -210,6 +171,7 @@ Check: computer-exec-time & compute-finish-time, both called from perform-moveme
   (format t "Move-time: ~a~%" (move-time mvmt)))
 
 ;; for 50, 500, & 5000
+
 Move-time: 0.4243659
  Toplevel Forms...
 
@@ -228,36 +190,9 @@ Move-time: 0.9215893
 (let ((r 50))
   (fitts
    (get-module :motor)
-   (fitts-coeff (make-instance 'swipe :hand (right-hand (get-module :motor)) :finger 'index :r r :theta 0 :speed 3))
+   (fitts-coeff (make-instance 'swipe :hand (right-hand (get-module :motor)) :finger 'index :r r :theta 0))
    r
    50))
-
-(let ((speed 1))
-  (format t "~a~%"
-	  (fitts
-	   (get-module :motor)
-	   (/ 1 (expt speed 2))
-	   50
-	   )))
-
-
-(format t "~a~%" (peck-fitts-coeff (get-module :motor)))
-
-(let ((the-swipe
-       (make-instance 'swipe :hand (right-hand (get-module :motor)) :finger 'index :r 500 :theta 0 :speed 5)))
-  (format t "~a~%~a~%~a~%~a~%~a~%"
-	  (compute-exec-time (get-module :motor) the-swipe)
-	  (move-time the-swipe)
-	  (setf (exec-time the-swipe) (compute-exec-time (get-module :motor) the-swipe))
-	  (exec-time the-swipe)
-	  (compute-finish-time (get-module :motor) the-swipe)))
-
-(let ((the-swipe
-       (make-instance 'swipe :hand (right-hand (get-module :motor)) :finger 'index :r 50 :theta 0 :speed 5)))
-  (perform-movement (get-module :motor) the-swipe)
-  (format t "~a~%~a~%"
-	  (exec-time the-swipe)
-	  (finish-time the-swipe)))
 
 
 
@@ -352,7 +287,7 @@ NIL
 ;;; I lack a principled way to map user intention of swiping speed to
 ;;; computing its execution time, so I'll just do what's expedient and otherwise
 ;;; seems at least not stupidly unreasonable: multiply fitts' r parameter in
-;;; compute-exec-time by the product of 1/speed and (1+ (act-r-noise .2)).
+;;; compute-exec-time by the product of 1/swipe-speed and (1+ (act-r-noise .2)).
 
 
 (let ((mvmt
@@ -362,7 +297,7 @@ NIL
 	:finger 'index
 	:r 5000
 	:theta 0
-	:speed 3)))
+	:swipe-speed 3)))
   (compute-exec-time (get-module :motor) mvmt)
   (terpri)
   (format t "Move-time: ~a~%" (move-time mvmt)))

@@ -165,22 +165,26 @@
 ;;;
 ;;; 2018.02.06 fpt 16
 ;;; Implement a new feature to allow the model to "consciously" control swiping
-;;; speed: an integer from the set [1,5], where 1 is slowest and 5 is fastest.
+;;; swipe-speed: an integer from the set [1,5], where 1 is slowest and 5 is fastest.
+;;;
 ;;; Note that this update breaks old code calling the swipe movement command
-;;; without specifying a speed feature: ACT-R simply won't execute the swipe
+;;; without specifying a swipe-speed feature: ACT-R simply won't execute the swipe
 ;;; command, instead proceeding otherwise.
 ;;; 
-;;; I lack a principled way to map user intention of swiping speed to
+;;; Note: I lack a principled way to map user intention of swiping speed to
 ;;; computing its execution time, so I'll just do what's expedient and otherwise
-;;; seems at least not stupidly unreasonable: multiply fitts' r parameter in
-;;; compute-exec-time by the product of 1/speed and (1+ (act-r-noise .2)).
+;;; seems at least not stupidly unreasonable: I give the Fitts function a
+;;; coefficient of difficulty that decreases with swipe-speed:
+;;; (/ 1 (expt (swipe-speed self) 2))
 ;;;
+;;; Note: I think swipe should allow for a nice, wide target parameter for the
+;;; Fitts function, like the entire side of the device to which the model is
+;;; swiping. For when you run with a NIL device, EG for testing, I gave it a
+;;; value of 500. Replace that in compute-exec-time with a call to the width
+;;; of your target.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(unless
-    (member ':act-touch *features*)
-  (push :act-touch *features*))
 
 ;;;; ---------------------------------------------------------------------- ;;;;
 ;;;;  Macros from "On Lisp"
@@ -408,10 +412,6 @@
              (fitts mtr-mod (peck-fitts-coeff mtr-mod) 
                     (ecase (style-name self)
                       (:index-thumb (r self))
-                      (:swipe (* (r self)
-				 (*
-				  (/ 1 speed)
-				  (1+ (act-r-noise .2)))))
                       (:pinch (abs (- (start-width self) (end-width self))))
                       (:rotate (dist 
                                (finger-loc-m mtr-mod 'right 'thumb)
@@ -419,6 +419,8 @@
   (+ (init-time mtr-mod)
      (max (burst-time mtr-mod) 
           (randomize-time (move-time self)))))
+
+
 
 (defmethod compute-finish-time ((mtr-mod motor-module) (self index-thumb))
   (+ (exec-time self) 
@@ -446,7 +448,19 @@
                                     (device (current-device-interface))
                                     (rotation self))))
 
-(defStyle swipe index-thumb hand finger r theta num-fngrs speed)
+(defStyle swipe index-thumb hand finger r theta num-fngrs swipe-speed)
+
+(defmethod compute-exec-time ((mtr-mod motor-module) (self swipe))
+  (setf (move-time self)
+        (max (burst-time mtr-mod)
+             (fitts mtr-mod
+		    (/ 1 (expt (swipe-speed self) 2)) 
+		    (r self)
+		    ;; width because the width of a target of a swipe should be wide, ie the edge of the device
+		    500))) ; or whatever the width of your device may be
+  (+ (init-time mtr-mod)
+     (max (burst-time mtr-mod) 
+	  (randomize-time (move-time self)))))
 
 (defmethod queue-output-events ((mtr-mod motor-module) (self swipe))
   (schedule-event-relative (exec-time self) 'device-handle-swipe :module :motor :output 'medium
@@ -491,4 +505,8 @@
 
 
 
+
+(unless
+    (member ':act-touch *features*)
+  (push :act-touch *features*))
 
